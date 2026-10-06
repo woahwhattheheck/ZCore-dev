@@ -33,6 +33,22 @@ export interface TierGateDecision {
   minimumTierCode: number;
 }
 
+export function isTierGateRecordFresh(
+  record: OnChainScoreRecord,
+  nowEpochSeconds: number = Math.floor(Date.now() / 1000)
+): boolean {
+  if (!Number.isFinite(record.updatedAt) || record.updatedAt <= 0) {
+    return false;
+  }
+
+  const validUntil = record.validUntil;
+  if (validUntil === undefined || validUntil === 0) {
+    return true;
+  }
+
+  return Number.isFinite(validUntil) && validUntil >= nowEpochSeconds;
+}
+
 export function evaluateTierGate(
   record: OnChainScoreRecord,
   minimumTier: GateTier
