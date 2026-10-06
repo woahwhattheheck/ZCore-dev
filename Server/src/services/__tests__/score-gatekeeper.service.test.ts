@@ -3,6 +3,7 @@ import {
   evaluateTierGate,
   getContractConfig,
   isTierGateRecordFresh,
+  sorobanU64ToSafeNumber,
 } from "../soroban.service";
 import {
   clearMockContractId,
@@ -72,6 +73,15 @@ describe("score gatekeeper", () => {
         1_000
       )
     ).toBe(true);
+  });
+
+  it("normalizes Soroban u64 timestamps before freshness checks", () => {
+    expect(sorobanU64ToSafeNumber(1_791_272_062n)).toBe(1_791_272_062);
+    expect(sorobanU64ToSafeNumber(0n)).toBe(0);
+    expect(sorobanU64ToSafeNumber(-1n)).toBeNull();
+    expect(
+      sorobanU64ToSafeNumber(BigInt(Number.MAX_SAFE_INTEGER) + 1n)
+    ).toBeNull();
   });
 
   it("resolves the score-registry contract through the mock override", () => {

@@ -13,6 +13,20 @@ export interface OnChainScoreRecord {
   validUntil?: number;
 }
 
+export function sorobanU64ToSafeNumber(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
+
+  if (typeof value === "bigint") {
+    return value >= 0n && value <= BigInt(Number.MAX_SAFE_INTEGER)
+      ? Number(value)
+      : null;
+  }
+
+  return null;
+}
+
 export function tierToCode(tier: string): number {
   return tierLabelToCode(tier);
 }
@@ -140,15 +154,25 @@ export async function readOnChainScore(
     const native = scValToNative(result) as {
       score: number;
       tier: number;
-      updated_at: number;
-      valid_until?: number;
+      updated_at: number | bigint;
+      valid_until?: number | bigint;
     };
+
+    const updatedAt = sorobanU64ToSafeNumber(native.updated_at);
+    const validUntil =
+      native.valid_until === undefined
+        ? undefined
+        : sorobanU64ToSafeNumber(native.valid_until);
+    if (updatedAt === null || validUntil === null) {
+      console.error("Soroban score returned an unsafe u64 timestamp");
+      return null;
+    }
 
     return {
       score: native.score,
       tier: native.tier,
-      updatedAt: native.updated_at,
-      validUntil: native.valid_until,
+      updatedAt,
+      validUntil,
     };
   } catch (error) {
     console.error("Failed to read on-chain score:", error);
