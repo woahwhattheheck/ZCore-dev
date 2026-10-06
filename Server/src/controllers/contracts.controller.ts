@@ -4,6 +4,7 @@ import {
   attestScoreOnChain,
   evaluateTierGate,
   getContractConfig,
+  isTierGateRecordFresh,
   readOnChainScore,
   tierCodeToLabel,
   type GateTier,
@@ -110,10 +111,10 @@ export const getTierGate = async (
     const minimumTier = (req.query.minTier ?? "B") as GateTier;
     const record = await readOnChainScore(wallet);
 
-    if (!record) {
+    if (!record || !isTierGateRecordFresh(record)) {
       return res.status(503).json({
         success: false,
-        error: "On-chain tier unavailable; gate fails closed",
+        error: "On-chain tier unavailable or expired; gate fails closed",
       });
     }
 
