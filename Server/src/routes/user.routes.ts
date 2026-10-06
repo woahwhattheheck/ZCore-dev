@@ -10,6 +10,7 @@ import {
 import {
   attestScore,
   getOnChainScore,
+  getTierGate,
 } from "../controllers/contracts.controller";
 import { validate, validateParams, validateQuery } from "../middleware/validation.middleware";
 import { validateLenderKey } from "../middleware/lender-auth.middleware";
@@ -24,6 +25,7 @@ import {
   WalletParamSchema,
   PaginationQuerySchema,
   ScoreHistoryQuerySchema,
+  TierGateQuerySchema,
 } from "../middleware/schemas";
 
 const router = Router();
@@ -37,6 +39,12 @@ const lenderScoreRateLimit = createRateLimiter({
 
 router.post("/request", validate(ScoringRequestSchema), requestScoring);
 router.get("/:wallet/on-chain", validateParams(WalletParamSchema), getOnChainScore);
+router.get(
+  "/:wallet/tier",
+  validateParams(WalletParamSchema),
+  validateQuery(TierGateQuerySchema),
+  getTierGate
+);
 router.post(
   "/:wallet/attest",
   validateParams(WalletParamSchema),

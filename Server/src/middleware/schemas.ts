@@ -64,6 +64,10 @@ export const ScoreHistoryQuerySchema = PaginationQuerySchema.extend({
   to: z.string().datetime().optional(),
 });
 
+export const TierGateQuerySchema = z.object({
+  minTier: z.enum(["A", "B", "C"]).default("B"),
+});
+
 export const CreditEventSchema = z.object({
   apiKey: z.string().min(10, "Invalid API key"),
   eventType: z.enum([

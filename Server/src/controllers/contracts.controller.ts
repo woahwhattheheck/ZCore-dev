@@ -2,9 +2,11 @@ import { NextFunction, Request, Response } from "express";
 import { prisma } from "../config/database";
 import {
   attestScoreOnChain,
+  evaluateTierGate,
   getContractConfig,
   readOnChainScore,
   tierCodeToLabel,
+  type GateTier,
 } from "../services/soroban.service";
 import { verifyWalletSignature } from "../services/auth-challenge.service";
 
@@ -66,6 +68,74 @@ export const getOnChainScore = async (
         source: "soroban",
       },
     });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /api/user/{wallet}/tier:
+ *   get:
+ *     tags: [Contracts]
+ *     summary: Check whether an attested wallet meets a minimum protocol tier
+ *     parameters:
+ *       - in: path
+ *         name: wallet
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: minTier
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [A, B, C]
+ *           default: B
+ *     responses:
+ *       200:
+ *         description: Wallet meets the requested minimum tier
+ *       403:
+ *         description: Wallet is below the requested minimum tier
+ *       503:
+ *         description: On-chain score is unavailable; gate fails closed
+ */
+export const getTierGate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { wallet } = req.params;
+    const minimumTier = (req.query.minTier ?? "B") as GateTier;
+    const record = await readOnChainScore(wallet);
+
+    if (!record) {
+      return res.status(503).json({
+        success: false,
+        error: "On-chain tier unavailable; gate fails closed",
+      });
+    }
+
+    const decision = evaluateTierGate(record, minimumTier);
+    const data = {
+      walletAddress: wallet,
+      score: record.score,
+      ...decision,
+      updatedAt: record.updatedAt,
+      validUntil: record.validUntil ?? null,
+      source: "soroban",
+    };
+
+    if (!decision.allowed) {
+      return res.status(403).json({
+        success: false,
+        error: `Minimum tier ${minimumTier} required`,
+        data,
+      });
+    }
+
+    return res.status(200).json({ success: true, data });
   } catch (error) {
     return next(error);
   }

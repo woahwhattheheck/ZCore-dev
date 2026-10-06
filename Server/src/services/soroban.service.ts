@@ -23,6 +23,35 @@ export function getInterfaceVersion(): number {
   return ZCORE_INTERFACE_VERSION;
 }
 
+export type GateTier = "A" | "B" | "C";
+
+export interface TierGateDecision {
+  allowed: boolean;
+  tier: string;
+  tierCode: number;
+  minimumTier: GateTier;
+  minimumTierCode: number;
+}
+
+export function evaluateTierGate(
+  record: OnChainScoreRecord,
+  minimumTier: GateTier
+): TierGateDecision {
+  const tier = tierCodeToLabel(record.tier);
+  // Normalize unknown contract output through the canonical mapping so a
+  // malformed tier fails closed as REJECTED instead of accidentally passing.
+  const tierCode = tierLabelToCode(tier);
+  const minimumTierCode = tierLabelToCode(minimumTier);
+
+  return {
+    allowed: tierCode >= minimumTierCode,
+    tier,
+    tierCode,
+    minimumTier,
+    minimumTierCode,
+  };
+}
+
 async function getNetworkPassphrase(): Promise<string> {
   const { Networks } = await import("@stellar/stellar-sdk");
   return process.env.STELLAR_NETWORK === "mainnet"
